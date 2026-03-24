@@ -1,0 +1,19 @@
+[Unit]
+Description=potential-vision
+After=network.target 
+
+[Service]
+Type=simple
+User=potential
+WorkingDirectory=/home/potential/potential-vision
+ExecStart=/bin/bash start.sh
+Restart=on-failure
+RestartSec=3
+
+# 改成对应机器人的ID
+Environment=ROS_DOMAIN_ID=7
+# 让Python的print输出能够实时显示在日志中
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
