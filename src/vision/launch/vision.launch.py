@@ -12,6 +12,8 @@ def generate_launch_description():
         namespace='hik_camera',
         name='hik_camera',
         output='both',
+        respawn=True,           
+        respawn_delay=2.0,    
         parameters=[{
             'use_sensor_data_qos': True, # 确保开启 Best Effort 传输
             # 如果你有相机的 yaml 配置文件，也可以在这里传进去

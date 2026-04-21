@@ -24,7 +24,8 @@ ignore_classes: ["negative"]
 #####################################################################################################
 R_gimbal2imubody_data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
 t_camera2gimbal: [0.12, 0.0, 0.045]
-t_gimbal2gun: [0.100, -0.03, -0.03]
+# t_gimbal2gun: [0.100, -0.03, -0.03]
+t_gimbal2gun: [0.100, 0.02, -0.03]
 #camera_matrix_data: [492.93545221480736, 0.0, 293.5403245413664, 0.0, 493.8139016519513, 224.97788040849863, 0.0, 0.0, 1.0]
 #  [1808.0042144701415, 0.0, 720.8415151208276,
 #   0.0, 1811.6399444449542, 574.3439002829814,
@@ -64,12 +65,12 @@ comming_angle: 35 # degree
 leaving_angle: 50 # degree
 min_spin_speed: 2 # rad/s
 decision_speed: 12 # rad/s
-high_speed_delay_time: 0.09 # s0.005
-low_speed_delay_time: 0.09 # s
+high_speed_delay_time: 0.12 # s0.005
+low_speed_delay_time: 0.12 # s
 
 
 ##############################################################################################
-first_tolerance: 4 # 近距离射击容差，degree
-second_tolerance: 5 # 远距离射击容差，degree
+first_tolerance: 2 # 近距离射击容差，degree 4
+second_tolerance: 3 # 远距离射击容差，degree 5
 judge_distance: 2 #距离判断阈值
 auto_fire: true # 是否由自瞄控制射击
