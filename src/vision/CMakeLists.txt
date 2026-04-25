@@ -12,6 +12,7 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED) 
 find_package(cv_bridge REQUIRED)   
 find_package(rm_interfaces REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -20,6 +21,7 @@ find_package(fmt REQUIRED)
 
 add_executable(vision_node
   src/ros_main.cpp
+  src/auto_aim_pipeline.cpp
   src/aimer.cpp
   src/armor.cpp
   src/classifier.cpp
@@ -47,6 +49,7 @@ ament_target_dependencies(vision_node
   sensor_msgs
   cv_bridge
   rm_interfaces
+  geometry_msgs
   OpenCV
   visualization_msgs
 )
