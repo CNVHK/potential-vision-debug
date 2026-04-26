@@ -3,19 +3,26 @@
 #include <Eigen/Dense>
 #include <chrono>
 #include <list>
+#include <optional>
 #include <string>
 
 #include "armor.hpp"
-#include "solver.hpp"
 #include "target.hpp"
 
 namespace auto_aim {
+    struct TrackedArmorIdentity {
+        ArmorName name;
+        ArmorType type;
+    };
+
     class Tracker {
     public:
-        Tracker(const std::string & config_path, Solver & solver);
+        explicit Tracker(const std::string & config_path);
+        // armors must be color-filtered, priority-sorted, and solved by the pipeline before tracking.
         std::list<Target> track(std::vector<Armor> & armors, std::chrono::steady_clock::time_point t, const Color &enemy_color, bool use_enemy_color);
+        bool needs_target_initialization(std::chrono::steady_clock::time_point t) const;
+        std::optional<TrackedArmorIdentity> tracked_armor_identity() const;
     private:
-        Solver & solver_;
         Color enemy_color_;
         int min_detect_count_;
         int max_temp_lost_count_;

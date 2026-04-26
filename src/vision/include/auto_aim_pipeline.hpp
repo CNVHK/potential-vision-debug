@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <chrono>
 
 #include "aimer.hpp"
 #include "detector.hpp"
@@ -20,6 +21,9 @@ public:
     VisionFrameOutput process(const VisionFrameInput & input);
 
 private:
+    void prepare_armors(std::vector<Armor> & armors, Color enemy_color) const;
+    void solve_required_armors(
+        std::vector<Armor> & armors, std::chrono::steady_clock::time_point timestamp);
     rm_interfaces::msg::Target make_target_msg(const Target & target) const;
     std::vector<ReprojectedArmor> make_reprojected_armors(
         const Armor & detected_armor, Target & target);

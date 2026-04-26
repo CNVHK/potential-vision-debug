@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <fmt/chrono.h>
 #include "detector.hpp"
 #include "armor.hpp"
@@ -74,9 +75,9 @@ int main() {
         MV_FRAME_OUT stOutFrame = {0};
         memset(&stOutFrame, 0, sizeof(MV_FRAME_OUT));
         std::string config_path = "D:\\potential_vision\\vision_params.yaml";
-        auto_aim::Detector detector(config_path, auto_aim::Color::blue, false);
+        auto_aim::Detector detector(config_path, false);
         auto_aim::Solver solver(config_path);
-        auto_aim::Tracker tracker(config_path, solver);
+        auto_aim::Tracker tracker(config_path);
         auto_aim::Aimer aimer(config_path);
         // auto_aim::Shooter shooter(config_path);
         std::chrono::steady_clock::time_point t;
@@ -106,10 +107,38 @@ int main() {
                     continue;
                 }
                 auto t = std::chrono::steady_clock::now();
-                auto armors = detector.detect_armors(srcImage);
+                auto armors = detector.detect_armors(srcImage, auto_aim::Color::blue);
+                armors.erase(
+                    std::remove_if(
+                        armors.begin(), armors.end(),
+                        [](const auto_aim::Armor & armor) { return armor.color != auto_aim::Color::blue; }),
+                    armors.end());
+                std::sort(armors.begin(), armors.end(), [](const auto_aim::Armor & a, const auto_aim::Armor & b) {
+                    cv::Point2f img_center(1440 / 2, 1080 / 2);
+                    auto distance_1 = cv::norm(a.center - img_center);
+                    auto distance_2 = cv::norm(b.center - img_center);
+                    return distance_1 < distance_2;
+                });
+                std::stable_sort(armors.begin(), armors.end(), [](const auto_aim::Armor & a, const auto_aim::Armor & b) {
+                    return a.priority < b.priority;
+                });
+                if (!armors.empty()) {
+                    if (tracker.needs_target_initialization(t)) {
+                        solver.solve(armors.front());
+                    } else {
+                        auto identity = tracker.tracked_armor_identity();
+                        if (identity.has_value()) {
+                            for (auto & armor : armors) {
+                                if (armor.name == identity->name && armor.type == identity->type) {
+                                    solver.solve(armor);
+                                }
+                            }
+                        }
+                    }
+                }
 
-                auto targets = tracker.track(armors, t, false);
-                auto command = aimer.aim(targets, t, 25);
+                auto targets = tracker.track(armors, t, auto_aim::Color::blue, false);
+                auto command = aimer.aim(targets, t, 25, solver.R_gimbal2world());
                 if (!targets.empty()) {
                     if (!armors.empty()) {
                         auto armor = armors.front();
@@ -137,7 +166,7 @@ int main() {
                         }
                     }
                 }
-                // command.shoot = shooter.shoot(command, aimer, targets, ypr);
+                // command.shoot = shooter.shoot(command, targets, ypr);
                 auto img_gimbal_info = fmt::format("gimbal_yaw: {:.1f}, gimbal_pitch: {:.1f}", command.yaw * 180 / CV_2PI, command.pitch * 180 / CV_2PI);
                 auto img_robot_info = fmt::format("rpm: {:.1f}, vx: {:.2f}, vy: {:.2f}", vyaw, vx, vy);
                 cv::putText(srcImage, img_gimbal_info, cv::Point(20, 60),

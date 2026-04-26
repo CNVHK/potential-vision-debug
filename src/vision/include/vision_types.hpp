@@ -13,7 +13,7 @@
 
 #include "armor.hpp"
 #include "target.hpp"
-#include "aimer.hpp"
+#include "command.hpp"
 #include "rm_interfaces/msg/cboard.hpp"
 #include "rm_interfaces/msg/target.hpp"
 
@@ -36,7 +36,7 @@ struct VisionFrameInput {
 };
 
 struct VisionFrameOutput {
-    Command command{false, false, 0.0, 0.0};
+    Command command{false, false, 0.0, 0.0, false};
     Eigen::Vector3d gimbal_ypr{0.0, 0.0, 0.0};
     std::vector<Armor> armors;
     std::list<Target> targets;

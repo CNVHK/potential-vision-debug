@@ -1,9 +1,9 @@
 #include <yaml-cpp/yaml.h>
-#include <algorithm>
+#include <numeric>
 #include "tracker.hpp"
 #include "math_tools.hpp"
 namespace auto_aim {
-    Tracker::Tracker(const std::string & config_path, Solver & solver) : solver_{solver},
+    Tracker::Tracker(const std::string & config_path) :
       detect_count_(0),
       temp_lost_count_(0),
       state_{"lost"},
@@ -18,25 +18,22 @@ namespace auto_aim {
         normal_temp_lost_count_ = max_temp_lost_count_;
     }
 
-    std::list<Target> Tracker::track(std::vector<Armor> & armors, std::chrono::steady_clock::time_point t, const Color &enemy_color, bool use_enemy_color) {
+    bool Tracker::needs_target_initialization(std::chrono::steady_clock::time_point t) const {
+        auto dt = tool::delta_time(t, last_timestamp_);
+        return state_ == "lost" || (state_ != "lost" && dt > 0.1);
+    }
+
+    std::optional<TrackedArmorIdentity> Tracker::tracked_armor_identity() const {
+        if (state_ == "lost") return std::nullopt;
+        return TrackedArmorIdentity{target_.name, target_.armor_type};
+    }
+
+    std::list<Target> Tracker::track(std::vector<Armor> & armors, std::chrono::steady_clock::time_point t, const Color &, bool) {
         auto dt = tool::delta_time(t, last_timestamp_);
         last_timestamp_ = t;
         if (state_ != "lost" && dt > 0.1) {
             state_ = "lost";
         }
-        armors.erase(std::remove_if(
-            armors.begin(), armors.end(),
-            [&](const auto_aim::Armor & a) { return a.color != enemy_color; }),armors.end());
-
-        std::sort(armors.begin(), armors.end(), [](const Armor & a, const Armor & b) {
-            cv::Point2f img_center(1440 / 2, 1080 / 2);  // TODO: 建议提出来作为常量或参数，不要在循环里反复创建
-            auto distance_1 = cv::norm(a.center - img_center);
-            auto distance_2 = cv::norm(b.center - img_center);
-            return distance_1 < distance_2;});
-
-
-        std::stable_sort(armors.begin(), armors.end(), [](const auto_aim::Armor & a, const auto_aim::Armor & b) {
-            return a.priority < b.priority;});
         bool found;
         if (state_ == "lost") {
             found = set_target(armors, t);
@@ -110,7 +107,6 @@ namespace auto_aim {
     bool Tracker::set_target(std::vector<Armor> & armors, std::chrono::steady_clock::time_point t) {
         if (armors.empty()) return false;
         auto & armor = armors.front();
-        solver_.solve(armor);
         auto is_balance = (armor.type == ArmorType::big) &&
                     (armor.name == ArmorName::three || armor.name == ArmorName::four ||
                      armor.name == ArmorName::five);
@@ -145,7 +141,6 @@ namespace auto_aim {
             if (armor.name != target_.name or armor.type != target_.armor_type) continue;
             found_count++;
             // min_x = armor.center.x < min_x ? armor.center.x : min_x;
-            solver_.solve(armor);
             target_.update(armor);
         }
         if (found_count == 0) return false;

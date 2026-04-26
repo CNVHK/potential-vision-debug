@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <chrono>
 #include <list>
+#include "command.hpp"
 #include "target.hpp"
 
 namespace auto_aim {
@@ -11,15 +12,6 @@ namespace auto_aim {
         bool valid;
         Eigen::Vector4d xyza;
     };
-
-    struct Command
-    {
-        bool control;
-        bool shoot;
-        double yaw;
-        double pitch;
-    };
-
 
     class Aimer {
     public:

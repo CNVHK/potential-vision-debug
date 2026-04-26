@@ -2,7 +2,8 @@
 #define POTENTIAL_VISION_SHOOTER_HPP
 #include <string>
 
-#include "aimer.hpp"
+#include "command.hpp"
+#include "target.hpp"
 
 namespace auto_aim
 {
@@ -13,7 +14,6 @@ namespace auto_aim
 
         bool shoot(
           const Command & command,
-          const Aimer & aimer,
           const std::list<Target> & targets, const Eigen::Vector3d & gimbal_pos);
 
     private:

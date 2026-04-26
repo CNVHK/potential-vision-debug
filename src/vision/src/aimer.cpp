@@ -21,7 +21,7 @@ namespace auto_aim {
 
     Command Aimer::aim(std::list<Target> targets, std::chrono::steady_clock::time_point timestamp, double bullet_speed,
             Eigen::Matrix3d R_gimbal2world, bool to_now) {
-        if (targets.empty()) return {false, false, 0, 0};
+        if (targets.empty()) return {false, false, 0, 0, false};
         auto target = targets.front();
         auto ekf = target.ekf();
         double delay_time = target.ekf_x()[7] > decision_speed_ ? high_speed_delay_time_ : low_speed_delay_time_;
@@ -40,14 +40,14 @@ namespace auto_aim {
         auto aim_point0 = choose_aim_point(target);
         debug_aim_point = aim_point0;
         if (!aim_point0.valid) {
-            return {false, false, 0, 0};
+            return {false, false, 0, 0, false};
         }
         Eigen::Vector3d xyz0 = aim_point0.xyza.head(3);
         auto d0 = std::sqrt(xyz0[0] * xyz0[0] + xyz0[1] * xyz0[1]);
         tool::Trajectory trajectory0(bullet_speed, d0, xyz0[2]);
         if (trajectory0.unsolvable) {
             debug_aim_point.valid = false;
-            return {false, false, 0, 0};
+            return {false, false, 0, 0, false};
         }
         bool converged = false;
         double prev_fly_time = trajectory0.fly_time;
@@ -60,7 +60,7 @@ namespace auto_aim {
             auto aim_point = choose_aim_point(iteration_target[iter]);
             debug_aim_point = aim_point;
             if (!aim_point.valid) {
-                return {false, false, 0, 0};
+                return {false, false, 0, 0, false};
             }
 
             // 计算新弹道
@@ -72,7 +72,7 @@ namespace auto_aim {
             // 检查弹道是否可解
             if (current_traj.unsolvable) {
                 debug_aim_point.valid = false;
-                return {false, false, 0, 0};
+                return {false, false, 0, 0, false};
             }
 
             // 检查收敛条件
@@ -89,7 +89,7 @@ namespace auto_aim {
         // double pitch = (current_traj.pitch + pitch_offset_);  //世界坐标系下pitch向上为负
         double yaw = std::atan2(final_xyz_gun.y(), final_xyz_gun.x()) * (180.0 / CV_PI) + yaw_offset_ ;
         double pitch = current_traj.pitch * (180.0 / CV_PI) + pitch_offset_;
-        return {true, false, yaw, pitch};
+        return {true, false, yaw, pitch, debug_aim_point.valid};
     }
     AimPoint Aimer::choose_aim_point(Target & target) {
         Eigen::VectorXd ekf_x = target.ekf_x();

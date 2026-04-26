@@ -4,7 +4,7 @@
 
 namespace auto_aim
 {
-    Shooter::Shooter(const std::string & config_path) : last_command_{false, false, 0, 0}
+    Shooter::Shooter(const std::string & config_path) : last_command_{false, false, 0, 0, false}
     {
         YAML::Node config = YAML::LoadFile(config_path);
         first_tolerance_ = config["first_tolerance"].as<double>();   
@@ -14,8 +14,8 @@ namespace auto_aim
     }
 
     bool Shooter::shoot(
-      const Command & command, const auto_aim::Aimer & aimer,
-      const std::list<auto_aim::Target> & targets, const Eigen::Vector3d & gimbal_pos) {
+      const Command & command, const std::list<auto_aim::Target> & targets,
+      const Eigen::Vector3d & gimbal_pos) {
         if (!command.control || targets.empty() || !auto_fire_) return false;
         auto target_x = targets.front().ekf_x()[0];
         auto target_y = targets.front().ekf_x()[2];
@@ -32,14 +32,14 @@ namespace auto_aim
         if (
           get_deg_diff(last_command_.yaw , command.yaw) < tolerance * 2 &&  //此时认为command突变不应该射击
           get_deg_diff(gimbal_pos[0] * (180.0 / CV_PI) , last_command_.yaw) < tolerance &&    //应该减去上一次command的yaw值
-          aimer.debug_aim_point.valid) {
+          command.aim_point_valid) {
             last_command_ = command;
             return true;
         }
         // if (
         //   std::abs(last_command_.yaw - command.yaw) < tolerance * 2 &&  //此时认为command突变不应该射击
         //   std::abs(gimbal_pos[0] - last_command_.yaw) < tolerance &&    //应该减去上一次command的yaw值
-        //   aimer.debug_aim_point.valid) {
+        //   command.aim_point_valid) {
         //     last_command_ = command;
         //     return true;
         //   }
