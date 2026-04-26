@@ -22,6 +22,8 @@ find_package(fmt REQUIRED)
 add_executable(vision_node
   src/ros_main.cpp
   src/auto_aim_pipeline.cpp
+  src/vision_input_buffer.cpp
+  src/vision_ros_publisher.cpp
   src/aimer.cpp
   src/armor.cpp
   src/classifier.cpp
