@@ -20,6 +20,7 @@ class VisionNode : public rclcpp::Node {
 public:
     explicit VisionNode() : Node("vision_node"), running_(true)
     {
+        // ROS 节点只保留订阅和线程生命周期管理，具体输入缓存/算法/发布都交给独立类。
         img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
             "/hik_camera/image_raw", rclcpp::SensorDataQoS(),
             std::bind(&VisionNode::image_callback, this, std::placeholders::_1));
@@ -79,6 +80,7 @@ private:
 
     void processing_loop()
     {
+        // 算法对象在处理线程内创建，后续所有 process 调用也都在同一线程执行。
         pipeline_ = std::make_unique<auto_aim::AutoAimPipeline>(config_path_);
 
         if (debug_) {
@@ -87,6 +89,7 @@ private:
         }
 
         while (running_) {
+            // 图像是处理循环的触发源；IMU/裁判系统使用缓存中的最新快照。
             auto msg = input_buffer_.wait_for_image(running_);
             if (!msg) {
                 continue;
@@ -98,6 +101,7 @@ private:
     void process_image(const sensor_msgs::msg::Image::SharedPtr msg)
     {
         try {
+            // 先采样时间，再做图像转换，尽量贴近相机回调时刻估计。
             auto current_ros_time = this->now();
             auto current_steady_time = std::chrono::steady_clock::now();
             cv::Mat img = cv_bridge::toCvShare(msg, "bgr8")->image;

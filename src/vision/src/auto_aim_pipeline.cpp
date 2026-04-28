@@ -20,17 +20,22 @@ VisionFrameOutput AutoAimPipeline::process(const VisionFrameInput & input)
 {
     VisionFrameOutput output;
 
+    // 每帧先更新世界系姿态；Solver 和 Aimer 都依赖这个旋转矩阵。
     solver_->set_R_gimbal2world(input.gimbal_orientation);
     output.gimbal_ypr = tool::eulers(solver_->R_gimbal2world(), 2, 1, 0);
 
+    // 数据流顺序：2D 检测 -> 候选准备 -> 必要 3D 解算 -> 目标追踪。
     output.armors = detector_->detect_armors(input.image, input.enemy_color);
     prepare_armors(output.armors, input.enemy_color);
     solve_required_armors(output.armors, input.steady_stamp);
     output.targets = tracker_->track(output.armors, input.steady_stamp, input.enemy_color, false);
+
+    // Aimer 只负责给出云台角度；Shooter 根据上一帧命令、当前云台姿态和容差判断是否开火。
     output.command =
         aimer_->aim(output.targets, input.steady_stamp, input.bullet_speed, solver_->R_gimbal2world());
     output.command.shoot = shooter_->shoot(output.command, output.targets, output.gimbal_ypr);
 
+    // Cboard 是当前电控侧实际消费的主输出，字段默认值每帧重新填，避免残留上一帧状态。
     output.cboard.is_detected = output.command.control;
     output.cboard.yaw = output.command.yaw;
     output.cboard.pitch = output.command.pitch;
@@ -60,12 +65,14 @@ VisionFrameOutput AutoAimPipeline::process(const VisionFrameInput & input)
 
 void AutoAimPipeline::prepare_armors(std::vector<Armor> & armors, Color enemy_color) const
 {
+    // Detector 已按颜色匹配过灯条，这里再过滤一次，保证 Tracker 输入契约稳定。
     armors.erase(
         std::remove_if(
             armors.begin(), armors.end(),
             [&](const Armor & armor) { return armor.color != enemy_color; }),
         armors.end());
 
+    // 旧逻辑在同优先级下更偏向画面中心目标，这里保留该选择策略。
     std::sort(armors.begin(), armors.end(), [](const Armor & a, const Armor & b) {
         cv::Point2f img_center(1440 / 2, 1080 / 2);
         auto distance_1 = cv::norm(a.center - img_center);
@@ -73,6 +80,7 @@ void AutoAimPipeline::prepare_armors(std::vector<Armor> & armors, Color enemy_co
         return distance_1 < distance_2;
     });
 
+    // priority 代表人工定义的目标优先级，使用 stable_sort 保留中心距离排序作为次级依据。
     std::stable_sort(armors.begin(), armors.end(), [](const Armor & a, const Armor & b) {
         return a.priority < b.priority;
     });
@@ -86,6 +94,7 @@ void AutoAimPipeline::solve_required_armors(
     }
 
     if (tracker_->needs_target_initialization(timestamp)) {
+        // lost/detecting 初始化阶段沿用旧逻辑：只解算排序后的第一个候选。
         solver_->solve(armors.front());
         return;
     }
@@ -97,6 +106,7 @@ void AutoAimPipeline::solve_required_armors(
 
     for (auto & armor : armors) {
         if (armor.name == identity->name && armor.type == identity->type) {
+            // 已有目标时只解算同 ID/大小的候选，避免全量 PnP 和 yaw 优化。
             solver_->solve(armor);
         }
     }
@@ -128,6 +138,7 @@ std::vector<ReprojectedArmor> AutoAimPipeline::make_reprojected_armors(
     auto min_error = 1e10;
     Eigen::Vector4d detector_xyza;
 
+    // 找到当前观测对应的那块装甲板，调试绘制时只画其他预测装甲板。
     for (const Eigen::Vector4d & xyza : armor_xyza_list) {
         auto yaw_error = std::abs(detected_armor.ypr_in_world[0] - xyza[3]);
         if (yaw_error < min_error) {

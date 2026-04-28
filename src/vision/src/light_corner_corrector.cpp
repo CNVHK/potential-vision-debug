@@ -20,15 +20,13 @@
 namespace auto_aim {
 
 void LightCornerCorrector::correctCorners(Armor &armor, const cv::Mat &gray_img) {
-  // If the width of the light is too small, the correction is not performed
+  // 灯条太窄时端点修正不稳定，直接跳过。
   constexpr int PASS_OPTIMIZE_WIDTH = 3;
 
   if (armor.left.width > PASS_OPTIMIZE_WIDTH) {
-    // Find the symmetry axis of the light
     SymmetryAxis left_axis = findSymmetryAxis(gray_img, armor.left);
     armor.left.center = left_axis.centroid;
     armor.left.axis = left_axis.direction;
-    // Find the corner of the light
     if (cv::Point2f t = findCorner(gray_img, armor.left, left_axis, "top"); t.x > 0) {
       armor.left.top_middle = t;
     }
@@ -38,11 +36,9 @@ void LightCornerCorrector::correctCorners(Armor &armor, const cv::Mat &gray_img)
   }
 
   if (armor.right.width > PASS_OPTIMIZE_WIDTH) {
-    // Find the symmetry axis of the light
     SymmetryAxis right_axis = findSymmetryAxis(gray_img, armor.right);
     armor.right.center = right_axis.centroid;
     armor.right.axis = right_axis.direction;
-    // Find the corner of the light
     if (cv::Point2f t = findCorner(gray_img, armor.right, right_axis, "top"); t.x > 0) {
       armor.right.top_middle= t;
     }
@@ -56,14 +52,14 @@ SymmetryAxis LightCornerCorrector::findSymmetryAxis(const cv::Mat &gray_img, con
   constexpr float MAX_BRIGHTNESS = 25;
   constexpr float SCALE = 0.07;
 
-  // Scale the bounding box
+  // 适当扩大 ROI，避免灯条边缘被截断。
   cv::Rect light_box = light.rotated_rect.boundingRect();
   light_box.x -= light_box.width * SCALE;
   light_box.y -= light_box.height * SCALE;
   light_box.width += light_box.width * SCALE * 2;
   light_box.height += light_box.height * SCALE * 2;
 
-  // Check boundary
+  // 保证 ROI 不越过图像边界。
   light_box.x = std::max(light_box.x, 0);
   light_box.x = std::min(light_box.x, gray_img.cols - 1);
   light_box.y = std::max(light_box.y, 0);
@@ -71,18 +67,18 @@ SymmetryAxis LightCornerCorrector::findSymmetryAxis(const cv::Mat &gray_img, con
   light_box.width = std::min(light_box.width, gray_img.cols - light_box.x);
   light_box.height = std::min(light_box.height, gray_img.rows - light_box.y);
 
-  // Get normalized light image
+  // 归一化 ROI 亮度，便于按亮度权重生成点云。
   cv::Mat roi = gray_img(light_box);
   float mean_val = cv::mean(roi)[0];
   roi.convertTo(roi, CV_32F);
   cv::normalize(roi, roi, 0, MAX_BRIGHTNESS, cv::NORM_MINMAX);
 
-  // Calculate the centroid
+  // 亮度矩估计灯条质心。
   cv::Moments moments = cv::moments(roi, false);
   cv::Point2f centroid = cv::Point2f(moments.m10 / moments.m00, moments.m01 / moments.m00) +
                          cv::Point2f(light_box.x, light_box.y);
 
-  // Initialize the PointCloud
+  // 按亮度权重构造点云。
   std::vector<cv::Point2f> points;
   for (int i = 0; i < roi.rows; i++) {
     for (int j = 0; j < roi.cols; j++) {
@@ -93,14 +89,12 @@ SymmetryAxis LightCornerCorrector::findSymmetryAxis(const cv::Mat &gray_img, con
   }
   cv::Mat points_mat = cv::Mat(points).reshape(1);
 
-  // PCA (Principal Component Analysis)
+  // PCA 得到灯条主方向。
   auto pca = cv::PCA(points_mat, cv::Mat(), cv::PCA::DATA_AS_ROW);
 
-  // Get the symmetry axis
   cv::Point2f axis =
     cv::Point2f(pca.eigenvectors.at<float>(0, 0), pca.eigenvectors.at<float>(0, 1));
 
-  // Normalize the axis
   axis = axis / cv::norm(axis);
 
   if (axis.y > 0) {
@@ -132,7 +126,7 @@ cv::Point2f LightCornerCorrector::findCorner(const cv::Mat &gray_img,
 
   std::vector<cv::Point2f> candidates;
 
-  // Select multiple corner candidates and take the average as the final corner
+  // 横向采样多个候选端点，最后取均值降低噪声。
   int n = light.width - 2;
   int half_n = std::round(n / 2);
   for (int i = -half_n; i <= half_n; i++) {
@@ -143,7 +137,7 @@ cv::Point2f LightCornerCorrector::findCorner(const cv::Mat &gray_img,
     cv::Point2f corner = cv::Point2f(x0, y0);
     float max_brightness_diff = 0;
     bool has_corner = false;
-    // Search along the symmetry axis to find the corner that has the maximum brightness difference
+    // 沿对称轴搜索亮度下降最明显的位置作为端点。
     for (float x = x0 + dx, y = y0 + dy; distance(x, y, x0, y0) < L * (END - START);
          x += dx, y += dy) {
       cv::Point2f cur = cv::Point2f(x, y);
@@ -173,4 +167,4 @@ cv::Point2f LightCornerCorrector::findCorner(const cv::Mat &gray_img,
   return cv::Point2f(-1, -1);
 }
 
-}  // namespace fyt::auto_aim
+}  // namespace auto_aim

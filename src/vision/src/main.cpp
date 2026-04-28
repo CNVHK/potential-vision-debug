@@ -56,7 +56,7 @@ int main() {
         nRet = MV_CC_OpenDevice(handle);
         if (MV_OK != nRet) return -1;
 
-        // (可选) 设置网络包大小，防止丢包 (仅GigE相机需要)
+    // 可选：GigE 相机设置网络包大小，降低丢包概率。
         if (pDeviceInfo->nTLayerType == MV_GIGE_DEVICE) {
             int nPacketSize = MV_CC_GetOptimalPacketSize(handle);
             if (nPacketSize > 0) {
@@ -79,7 +79,6 @@ int main() {
         auto_aim::Solver solver(config_path);
         auto_aim::Tracker tracker(config_path);
         auto_aim::Aimer aimer(config_path);
-        // auto_aim::Shooter shooter(config_path);
         std::chrono::steady_clock::time_point t;
         while (true) {
             // 超时时间 1000ms
@@ -166,7 +165,6 @@ int main() {
                         }
                     }
                 }
-                // command.shoot = shooter.shoot(command, targets, ypr);
                 auto img_gimbal_info = fmt::format("gimbal_yaw: {:.1f}, gimbal_pitch: {:.1f}", command.yaw * 180 / CV_2PI, command.pitch * 180 / CV_2PI);
                 auto img_robot_info = fmt::format("rpm: {:.1f}, vx: {:.2f}, vy: {:.2f}", vyaw, vx, vy);
                 cv::putText(srcImage, img_gimbal_info, cv::Point(20, 60),

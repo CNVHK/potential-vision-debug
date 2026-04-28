@@ -20,11 +20,11 @@ namespace auto_aim {
 
     cv::Mat NumberClassifier::extract_number(const cv::Mat &src, const ::auto_aim::Armor &armor) {
         static const int light_length = 12;
-        // Image size after warp
+        // 透视变换后的图像尺寸。
         static const int warp_height = 28;
         static const int small_armor_width = 32;
         static const int large_armor_width = 54;
-        // Number ROI size
+        // 数字区域和模型输入尺寸。
         static const cv::Size roi_size(20, 28);
         static const cv::Size input_size(28, 28);
         cv::Point2f lights_vertices[4] = {
@@ -49,22 +49,18 @@ namespace auto_aim {
     }
 
     void NumberClassifier::classify(const cv::Mat &src, Armor &armor) {
-        // Normalize
+        // 归一化后送入 ONNX 数字分类模型。
         cv::Mat input = armor.number_img / 255.0;
 
-        // Create blob from image
         cv::Mat blob;
         cv::dnn::blobFromImage(input, blob);
 
-        // Set the input blob for the neural network
         mutex_.lock();
         net_.setInput(blob);
 
-        // Forward pass the image blob through the model
         cv::Mat outputs = net_.forward().clone();
         mutex_.unlock();
 
-        // Decode the output
         double confidence;
         cv::Point class_id_point;
         minMaxLoc(outputs.reshape(1, 1), nullptr, &confidence, nullptr, &class_id_point);
@@ -72,8 +68,6 @@ namespace auto_aim {
 
         armor.confidence = confidence;
         armor.name = static_cast<ArmorName>(label_id);
-
-        // armor.classfication_result = fmt::format("{}:{:.1f}%", armor.number, armor.confidence * 100.0);
     }
 
     void NumberClassifier::erase_ignore_classes(std::vector<Armor> &armors) {

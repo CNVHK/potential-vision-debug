@@ -17,7 +17,7 @@ namespace auto_aim {
         ArmorType armor_type;
         ArmorPriority priority;
         bool jumped;
-        int last_id;  // debug only
+        int last_id;  // 调试用：上一帧匹配到的装甲板序号
         Target() = default;
         Target(
           const Armor & armor, std::chrono::steady_clock::time_point t, double radius, int armor_num,

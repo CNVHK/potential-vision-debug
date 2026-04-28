@@ -23,7 +23,7 @@ namespace auto_aim {
         auto center_x = xyz[0] + r * std::cos(ypr[0]);
         auto center_y = xyz[1] + r * std::sin(ypr[0]);
         auto center_z = xyz[2];
-        Eigen::VectorXd x0{{center_x, 0, center_y, 0, center_z, 0, ypr[0], 0, r, 0, 0}};  //初始化预测量
+        Eigen::VectorXd x0{{center_x, 0, center_y, 0, center_z, 0, ypr[0], 0, r, 0, 0}};  // 初始化状态量
         Eigen::MatrixXd P0 = P0_dig.asDiagonal();
         auto x_add = [](const Eigen::VectorXd & a, const Eigen::VectorXd & b) -> Eigen::VectorXd {
             Eigen::VectorXd c = a + b;
@@ -47,9 +47,6 @@ namespace auto_aim {
     }
 
     void Target::predict(std::chrono::steady_clock::time_point t) {
-        // auto dt = tool::delta_time(t, t_);
-        // predict(dt);
-        // t_ = t;
         if (t_ == std::chrono::steady_clock::time_point()) {
             t_ = t;
             return;
@@ -114,7 +111,6 @@ namespace auto_aim {
             this->ekf_.x[7] = this->ekf_.x[7] > 0 ? 2.51 : -2.51;
 
         ekf_.predict(F, Q, f);
-        // ekf_.P.diagonal().array() += 1e-3;
     }
 
     void Target::update(const Armor &armor) {
@@ -168,9 +164,6 @@ namespace auto_aim {
         auto center_yaw = std::atan2(armor.xyz_in_world[1], armor.xyz_in_world[0]);
         auto delta_angle = tool::limit_rad(armor.ypr_in_world[0] - center_yaw);
 
-        // Eigen::VectorXd R_dig{
-        //         {4e-3, 4e-3, log(std::abs(delta_angle) + 1) + 1,
-        //             log(std::abs(armor.ypd_in_world[2]) + 1) / 200 + 9e-2}};
         Eigen::VectorXd R_dig{
                 {2e-4, 4e-3, log(std::abs(delta_angle) + 1) + 1,
                     log(std::abs(armor.ypd_in_world[2]) + 1) / 200 + 9e-2}};
@@ -191,31 +184,8 @@ namespace auto_aim {
         };
         const Eigen::VectorXd & ypd = armor.ypd_in_world;
         const Eigen::VectorXd & ypr = armor.ypr_in_world;
-        Eigen::VectorXd z{{ypd[0], ypd[1], ypd[2], ypr[0]}};  //获得观测量
+        Eigen::VectorXd z{{ypd[0], ypd[1], ypd[2], ypr[0]}};  // 观测量：yaw、pitch、distance、armor_yaw
         ekf_.update(z, H, R, h, z_subtract);
-        // static std::ofstream log_file("ekf_data.csv", std::ios::trunc);
-        // static bool is_header_written = false;
-        // if (!is_header_written) {
-        //     log_file << "Time,Obs_Yaw,EKF_Yaw,EKF_V_Yaw,Radius,Match_ID" << std::endl;
-        //     is_header_written = true;
-        // }
-        // if (log_file.is_open()) {
-        //     static auto start_t = std::chrono::steady_clock::now();
-        //     auto now = std::chrono::steady_clock::now();
-        //     double t_sec = std::chrono::duration<double>(now - start_t).count();
-        //     double obs_yaw = armor.ypr_in_world[0];
-        //     double ekf_yaw = ekf_.x[6];
-        //     double v_yaw = ekf_.x[7];
-        //     double r = ekf_.x[8];
-        //     log_file << std::fixed << std::setprecision(6)
-        //              << t_sec << ","
-        //              << obs_yaw << ","
-        //              << ekf_yaw << ","
-        //              << v_yaw << ","
-        //              << r << ","
-        //              << id << std::endl;
-        // }
-        //////////////
     }
     Eigen::VectorXd Target::ekf_x() const { return ekf_.x; }
 
@@ -239,7 +209,7 @@ namespace auto_aim {
             is_converged_ = true;
         }
 
-        //前哨站特殊判断
+        // 前哨站需要更多更新帧后才认为收敛。
         if (this->name == ArmorName::outpost && update_count_ > 10 && !this->diverged()) {
             is_converged_ = true;
         }

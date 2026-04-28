@@ -8,10 +8,10 @@
 namespace auto_aim {
     Aimer::Aimer(const std::string & config_path) :left_yaw_offset_(std::nullopt), right_yaw_offset_(std::nullopt) {
         YAML::Node config = YAML::LoadFile(config_path);
-        yaw_offset_ = config["yaw_offset"].as<double>() / 57.3;        // degree to rad
-        pitch_offset_ = config["pitch_offset"].as<double>() / 57.3;    // degree to rad
-        comming_angle_ = config["comming_angle"].as<double>() / 57.3;  // degree to rad
-        leaving_angle_ = config["leaving_angle"].as<double>() / 57.3;  // degree to rad
+        yaw_offset_ = config["yaw_offset"].as<double>() / 57.3;        // 角度转弧度
+        pitch_offset_ = config["pitch_offset"].as<double>() / 57.3;    // 角度转弧度
+        comming_angle_ = config["comming_angle"].as<double>() / 57.3;  // 角度转弧度
+        leaving_angle_ = config["leaving_angle"].as<double>() / 57.3;  // 角度转弧度
         high_speed_delay_time_ = config["high_speed_delay_time"].as<double>();
         low_speed_delay_time_ = config["low_speed_delay_time"].as<double>();
         decision_speed_ = config["decision_speed"].as<double>();
@@ -24,6 +24,7 @@ namespace auto_aim {
         if (targets.empty()) return {false, false, 0, 0, false};
         auto target = targets.front();
         auto ekf = target.ekf();
+        // 根据目标旋转速度选择经验延迟，高速旋转时提前量更敏感。
         double delay_time = target.ekf_x()[7] > decision_speed_ ? high_speed_delay_time_ : low_speed_delay_time_;
         auto future = timestamp;
         if (to_now) {
@@ -33,7 +34,7 @@ namespace auto_aim {
             target.predict(future);
         }
         else {
-            auto dt = 0.005 + delay_time;  //detector-aimer耗时0.005+发弹延时0.1
+            auto dt = 0.005 + delay_time;  // 检测到瞄准的估计耗时 + 发弹延时
             future += std::chrono::microseconds(static_cast<int64_t>(dt * 1e6));
             target.predict(future);
         }
@@ -42,6 +43,8 @@ namespace auto_aim {
         if (!aim_point0.valid) {
             return {false, false, 0, 0, false};
         }
+
+        // 先用当前击打点估计一次飞行时间，再迭代“飞行时间 -> 目标预测 -> 弹道”直到收敛。
         Eigen::Vector3d xyz0 = aim_point0.xyza.head(3);
         auto d0 = std::sqrt(xyz0[0] * xyz0[0] + xyz0[1] * xyz0[1]);
         tool::Trajectory trajectory0(bullet_speed, d0, xyz0[2]);
@@ -63,19 +66,17 @@ namespace auto_aim {
                 return {false, false, 0, 0, false};
             }
 
-            // 计算新弹道
             Eigen::Vector3d xyz_gimbal = aim_point.xyza.head(3);
             Eigen::Vector3d xyz_gun = xyz_gimbal - gun_offset_in_world;
             double d = std::sqrt(xyz_gun.x() * xyz_gun.x() + xyz_gun.y() * xyz_gun.y());
             current_traj = tool::Trajectory(bullet_speed, d, xyz_gun.z());
 
-            // 检查弹道是否可解
             if (current_traj.unsolvable) {
                 debug_aim_point.valid = false;
                 return {false, false, 0, 0, false};
             }
 
-            // 检查收敛条件
+            // 飞行时间变化很小时认为弹道预测收敛。
             if (std::abs(current_traj.fly_time - prev_fly_time) < 0.001) {
                 converged = true;
                 break;
@@ -84,9 +85,7 @@ namespace auto_aim {
         }
         Eigen::Vector3d final_xyz_gimbal = debug_aim_point.xyza.head(3);
         Eigen::Vector3d final_xyz_gun = final_xyz_gimbal - gun_offset_in_world;
-        //gimbal_to_gun
-        // double yaw = -std::atan2(final_xyz.y(), final_xyz.x()) + yaw_offset_;
-        // double pitch = (current_traj.pitch + pitch_offset_);  //世界坐标系下pitch向上为负
+        // 将云台系目标点转换到枪口系后生成控制角。
         double yaw = std::atan2(final_xyz_gun.y(), final_xyz_gun.x()) * (180.0 / CV_PI) + yaw_offset_ ;
         double pitch = current_traj.pitch * (180.0 / CV_PI) + pitch_offset_;
         return {true, false, yaw, pitch, debug_aim_point.valid};
@@ -99,7 +98,7 @@ namespace auto_aim {
         auto center_yaw = std::atan2(ekf_x[2], ekf_x[0]);
 
 
-        // 如果delta_angle为0，则该装甲板中心和整车中心的连线在世界坐标系的xy平面过原点
+        // 夹角为 0 时，装甲板中心与整车中心连线在世界坐标系 xy 平面过原点。
         std::vector<double> delta_angle_list;
         for (int i = 0; i < armor_num; i++) {
             auto delta_angle = tool::limit_rad(armor_xyza_list[i][3] - center_yaw);
@@ -107,6 +106,7 @@ namespace auto_aim {
         }
 
         if (std::abs(target.ekf_x()[7]) <= 2 && target.name != ArmorName::outpost) {
+            // 低速目标优先选择朝向接近正面的装甲板，减少切换。
             std::vector<int> id_list;
             for (int i = 0; i < armor_num; i++) {
                 if (std::abs(delta_angle_list[i]) > 60 / 57.3) continue;
@@ -135,6 +135,7 @@ namespace auto_aim {
             leaving_angle = leaving_angle_;
         }
         for (int i = 0; i < armor_num; i++) {
+            // 高速旋转时只打正在进入可击打窗口的装甲板，避开离开窗口的板。
             if (std::abs(delta_angle_list[i]) > coming_angle) continue;
             if (ekf_x[7] > 0 && delta_angle_list[i] < leaving_angle) return {true, armor_xyza_list[i]};
             if (ekf_x[7] < 0 && delta_angle_list[i] > -leaving_angle) return {true, armor_xyza_list[i]};

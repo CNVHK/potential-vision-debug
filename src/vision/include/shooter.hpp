@@ -7,6 +7,9 @@
 
 namespace auto_aim
 {
+    // 开火判定模块：在 Aimer 给出角度后，根据角度突变、当前云台角和目标距离决定是否开火。
+    //
+    // Shooter 只消费 Command，不读取 Aimer 内部状态，便于之后替换瞄准策略或单独测试开火逻辑。
     class Shooter
     {
     public:

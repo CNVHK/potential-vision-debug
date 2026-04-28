@@ -18,17 +18,11 @@ namespace auto_aim {
         width = (cv::norm(corners[0] - corners[1]) + cv::norm(corners[2] - corners[3])) / 2;
         length = cv::norm(top_middle - bottom_middle);
         angle = std::atan2(top2bottom.y, top2bottom.x);
-        // std::cout << "angle" << angle * 180.0 / CV_PI << std::endl;
         angle_error = std::abs(angle - CV_PI / 2);
-        // std::cout << "angle_error" << angle_error << " " << angle_error * 180.0 / CV_PI << std::endl;
         ratio = length / width;
     }
     Armor::Armor(const Lightbar & left, const Lightbar & right) : left(left), right(right) {
-
-        // std::cout << "ENTER Armor ctor" << std::endl;
-
         color = left.color;
-        // center_norm =
         center = (left.center + right.center) / 2;
         points.emplace_back(left.top_middle);
         points.emplace_back(right.top_middle);
@@ -41,22 +35,17 @@ namespace auto_aim {
         light_angle_error = std::abs(left.angle / right.angle);
         bottom_angle_error = std::abs(std::atan2(bottom_left2right.y, bottom_left2right.x));
         top_bottom_angle_error = std::abs(std::abs(top_angle_error) - std::abs(bottom_angle_error));
-        // top_bottom_angle_error = std::abs(top_angle_error / bottom_angle_error);
-        // std::cout << "top_bottom_angle_error " << top_bottom_angle_error << std::endl;
-        // std::cout << "top_angle " << top_angle_error << std::endl;
         auto left2right = left.center - right.center;
         auto width = cv::norm(left2right);
         auto max_lightbar_length = std::max(left.length, right.length);
         auto min_lightbar_length = std::min(left.length, right.length);
         ratio = width / max_lightbar_length;
         side_ratio = max_lightbar_length / min_lightbar_length;
-        // std::cout << "ratio:" << ratio << std::endl;
 
         auto roll = std::atan2(left2right.y, left2right.x);
         auto left_rectangular_error = std::abs(left.angle - roll - CV_PI / 2);
         auto right_rectangular_error = std::abs(right.angle - roll - CV_PI / 2);
         rectangular_error_diff =  std::abs(left_rectangular_error - right_rectangular_error);
-        // std::cout << "left rectangular error: " << rectangular_error_diff << std::endl;
         rectangular_error = std::max(left_rectangular_error, right_rectangular_error);
 
 

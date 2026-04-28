@@ -11,12 +11,14 @@
 #include "armor.hpp"
 
 namespace auto_aim {
+    // 2D 检测模块：从 BGR 图像中提取灯条、匹配装甲板，并完成数字分类。
+    //
+    // 输出的 Armor 只保证具备图像几何信息和分类结果；世界坐标、yaw 等 3D 信息由 Solver 填充。
     class Detector {
     public:
         Detector(const std::string & config_path, bool debug = true);
         std::vector<Armor> detect_armors(const cv::Mat &input_img, const Color &color);
         cv::Mat preprocess_image(const cv::Mat &input_img);
-        // std::list<Armor> detector();
         std::unique_ptr<NumberClassifier> classifier;
         std::unique_ptr<LightCornerCorrector> corner_corrector;
         Color detect_color;

@@ -2,9 +2,9 @@
 #include "solver.hpp"
 #include "math_tools.hpp"
 namespace auto_aim {
-    constexpr double LIGHTBAR_LENGTH = 47e-3;     // m
-    constexpr double BIG_ARMOR_WIDTH = 230e-3;    // m
-    constexpr double SMALL_ARMOR_WIDTH = 135e-3;  // m
+    constexpr double LIGHTBAR_LENGTH = 47e-3;     // 单位：m
+    constexpr double BIG_ARMOR_WIDTH = 230e-3;    // 单位：m
+    constexpr double SMALL_ARMOR_WIDTH = 135e-3;  // 单位：m
 
     const std::vector<cv::Point3f> BIG_ARMOR_POINTS{
       {0, BIG_ARMOR_WIDTH / 2, LIGHTBAR_LENGTH / 2},
@@ -16,22 +16,6 @@ namespace auto_aim {
       {0, -SMALL_ARMOR_WIDTH / 2, LIGHTBAR_LENGTH / 2},
       {0, -SMALL_ARMOR_WIDTH / 2, -LIGHTBAR_LENGTH / 2},
       {0, SMALL_ARMOR_WIDTH / 2, -LIGHTBAR_LENGTH / 2}};
-
-    // 【Step 1】定义在 Z=0 平面，法线朝 Z，符合 OpenCV 标准
-    // 0:左上, 1:右上, 2:右下, 3:左下
-    // const std::vector<cv::Point3f> SMALL_ARMOR_POINTS{
-    //     {-SMALL_ARMOR_WIDTH / 2, -LIGHTBAR_LENGTH / 2, 0},
-    //     { SMALL_ARMOR_WIDTH / 2, -LIGHTBAR_LENGTH / 2, 0},
-    //     { SMALL_ARMOR_WIDTH / 2,  LIGHTBAR_LENGTH / 2, 0},
-    //     {-SMALL_ARMOR_WIDTH / 2,  LIGHTBAR_LENGTH / 2, 0}
-    // };
-    // 修改 3D 点定义：回归 X=0 平面 (符合云台习惯)，且顺序正确
-    // const std::vector<cv::Point3f> SMALL_ARMOR_POINTS{
-    //     {0, -SMALL_ARMOR_WIDTH / 2, -LIGHTBAR_LENGTH / 2},
-    //     {0,  SMALL_ARMOR_WIDTH / 2, -LIGHTBAR_LENGTH / 2},
-    //     {0,  SMALL_ARMOR_WIDTH / 2, LIGHTBAR_LENGTH / 2},
-    //     {0, -SMALL_ARMOR_WIDTH / 2, LIGHTBAR_LENGTH / 2}
-    // };
 
     Solver::Solver(std::string &config_path) :R_gimbal2world_(Eigen::Matrix3d::Identity()){
         YAML::Node config = YAML::LoadFile(config_path);
@@ -60,21 +44,15 @@ namespace auto_aim {
 
     void Solver::solve(Armor & armor) {
         const auto &object_point = (armor.type == ArmorType::big) ? BIG_ARMOR_POINTS : SMALL_ARMOR_POINTS;
-        // const auto &object_point = SMALL_ARMOR_POINTS;
-        // std::cout << object_point << std::endl;
 
         cv::Vec3d rvec, tvec;
         cv::solvePnP(object_point,
             armor.points, camera_matrix_, distort_coeffs_, rvec, tvec, false,cv::SOLVEPNP_IPPE);
 
-        // std::cout << rvec << std::endl;
         Eigen::Vector3d xyz_in_camera;
         cv::cv2eigen(tvec, xyz_in_camera);
         armor.xyz_in_gimbal = R_camera2gimbal_ * xyz_in_camera + t_camera2gimbal_;
-        // armor.xyz_in_world = R_gimbal2imubody_ * armor.xyz_in_gimbal;
         armor.xyz_in_world = R_gimbal2world_ * armor.xyz_in_gimbal;
-        // std::cout << xyz_in_camera[0]  << " " << xyz_in_camera[1]  << " " << xyz_in_camera[2]<< std::endl;
-
 
         cv::Mat rmat;
         cv::Rodrigues(rvec, rmat);
@@ -83,16 +61,9 @@ namespace auto_aim {
 
         Eigen::Matrix3d R_armor2gimbal = R_camera2gimbal_ * R_armor2camera;
         Eigen::Matrix3d R_armor2world = R_gimbal2world_ * R_armor2gimbal;
-        auto ypr_in_camera = tool::eulers(R_armor2camera, 1, 0, 2);
-        // armor.ypr_in_gimbal = tool::eulers(R_armor2gimbal, 2, 1, 0);
         armor.ypr_in_gimbal = tool::eulers(R_armor2gimbal, 2, 1, 0);
-        // armor.ypr_in_world = tool::eulers(R_armor2world, 2, 1, 0);
         armor.ypr_in_world = tool::eulers(R_armor2world, 2, 1, 0);
-        // armor.ypr_in_world[2] = tool::limit_rad(armor.ypr_in_world[2] + CV_PI);
         armor.ypd_in_world = tool::xyz2ypd(armor.xyz_in_world);
-        // std::cout << ypr_in_camera[0] * 180.0 / CV_PI << " " << ypr_in_camera[1] * 180.0 / CV_PI << " " << ypr_in_camera[2] * 180.0 / CV_PI << std::endl;
-
-        // std::cout << armor.ypr_in_world[0] * 180.0 / CV_PI << " " << armor.ypr_in_world[1] * 180.0 / CV_PI << " " << armor.ypr_in_world[2] * 180.0 / CV_PI << std::endl;
 
         auto is_balance = (armor.type == ArmorType::big) &&
                     (armor.name == ArmorName::three || armor.name == ArmorName::four ||
@@ -106,13 +77,11 @@ namespace auto_aim {
         Eigen::Vector3d gimbal_ypr = tool::eulers(R_gimbal2world_, 2, 1, 0);
         constexpr double SEARCH_RANGE = 140;
         auto yaw0 = tool::limit_rad(gimbal_ypr[0] - SEARCH_RANGE / 2 * CV_PI / 180.0);
-        // std::cout << "yaw0 " << yaw0 << std::endl;
         auto min_error = 1e10;
         auto best_yaw = armor.ypr_in_world[0];
 
         for (int i=0; i < SEARCH_RANGE; i++) {
             double yaw = tool::limit_rad(yaw0 + i * CV_PI / 180.0);
-            // std::cout << "yaw " << yaw * 180 / CV_PI << std::endl;
             auto error = armor_reprojection_error(armor, yaw, (i - SEARCH_RANGE / 2) * CV_PI / 180.0);
 
             if (error < min_error) {
@@ -131,8 +100,7 @@ namespace auto_aim {
             }
         }
         armor.yaw_raw = armor.ypr_in_world[0];
-        armor.ypr_in_world[0] = best_yaw + 0.105; //加了6度的精修
-        // std::cout << "best_yaw " << best_yaw * 180.0 / CV_PI  << std::endl;
+        armor.ypr_in_world[0] = best_yaw + 0.105; // 约 6 度经验补偿
     }
 
 
@@ -142,7 +110,6 @@ namespace auto_aim {
         auto cos_yaw = std::cos(yaw);
 
         auto pitch = (name == ArmorName::outpost) ? -15.0 * CV_PI / 180.0 : 15.0 * CV_PI / 180.0;
-        // auto pitch = 0.0;
         auto sin_pitch = std::sin(pitch);
         auto cos_pitch = std::cos(pitch);
 
@@ -154,21 +121,20 @@ namespace auto_aim {
         };
         // clang-format on
 
-        // get R_armor2camera t_armor2camera
+        // 从世界系反推装甲板到相机系的位姿。
         const Eigen::Vector3d & t_armor2world = xyz_in_world;
         Eigen::Matrix3d R_armor2camera =
           R_camera2gimbal_.transpose() * R_gimbal2world_.transpose() * R_armor2world;
         Eigen::Vector3d t_armor2camera =
           R_camera2gimbal_.transpose() * (R_gimbal2world_.transpose() * t_armor2world - t_camera2gimbal_);
 
-        // get rvec tvec
+        // 转成 OpenCV 重投影所需的 rvec/tvec。
         cv::Vec3d rvec;
         cv::Mat R_armor2camera_cv;
         cv::eigen2cv(R_armor2camera, R_armor2camera_cv);
         cv::Rodrigues(R_armor2camera_cv, rvec);
         cv::Vec3d tvec(t_armor2camera[0], t_armor2camera[1], t_armor2camera[2]);
 
-        // reproject
         std::vector<cv::Point2f> image_points;
         const auto & object_points = (type == ArmorType::big) ? BIG_ARMOR_POINTS : SMALL_ARMOR_POINTS;
         cv::projectPoints(object_points, rvec, tvec, camera_matrix_, distort_coeffs_, image_points);
@@ -179,7 +145,6 @@ namespace auto_aim {
         auto image_points = reproject_armor(armor.xyz_in_world, yaw, armor.type, armor.name);
         auto error = 0.0;
         for (int i = 0; i < 4; i++) error += cv::norm(armor.points[i] - image_points[i]);
-        // auto error = SJTU_cost(image_points, armor.points, inclined);
         return error;
     }
 

@@ -31,10 +31,6 @@ namespace auto_aim {
         cv::Mat binary_img = preprocess_image(input_img);
         std::vector<Lightbar> lightbars = find_lights(input_img, binary_img);
         if (lightbars.size() >= 2) {
-            // for (auto &lightbar : lightbars) {
-            //     cv::line(
-            //             input_img, lightbar.top_middle, lightbar.bottom_middle, cv::Scalar(0, 255, 0), 10, cv::LINE_AA);
-            // }
             armors = match_armors(lightbars, color);
             armors = entire_armor(input_img, armors);
         }
@@ -60,10 +56,8 @@ namespace auto_aim {
         for (const auto &contour : contours) {
             auto rotated_rect = cv::minAreaRect(contour);
             auto lightbar = Lightbar(rotated_rect);
-            // std::cout << lightbar.ratio << " " << lightbar.length << " " << lightbar.angle_error << std::endl;
             if (!check_geometry(lightbar)) continue;
             lightbar.color = get_color(bgr_img, contour);
-            // std::cout << lightbar.color << std::endl;
             if (lightbar.color == Color::extinguish) continue;
                 lightbars.emplace_back(lightbar);
         }
@@ -71,7 +65,6 @@ namespace auto_aim {
         std::sort(lightbars.begin(), lightbars.end(),[](const Lightbar &l1, const Lightbar &l2) {
             return l1.center.x < l2.center.x;
         });
-        // std::cout <<  lightbars.size() << "\n";
         return lightbars;
     }
 
@@ -79,16 +72,12 @@ namespace auto_aim {
         std::vector<Armor> armors;
         for (auto left = lightbars.begin(); left != lightbars.end(); left++) {
             if (left->color != color) continue;
-            // double max_iter_width = left->length * armor_params.max_large_center_distance;
             for (auto right = std::next(left); right != lightbars.end(); right++) {
                 if (right->color != color) continue;
                 if (contain_ligthbar(left - lightbars.begin(), right - lightbars.begin(), lightbars)) continue;
                 auto armor = Armor(*left, *right);
                 if (!check_geometry(armor)) continue;
-                 //std::cout << "YES" << "armor.top_bottom_angle_error " << armor.top_bottom_angle_error <<
-                  //   " armor.top_angle_error " << armor.top_angle_error << " armor.light_angle_error " <<armor.light_angle_error << std::endl;
                 armor.type = get_type(armor);
-                // std::cout << "ratio:" << armor.ratio << std::endl;
                 armors.emplace_back(armor);
             }
         }
@@ -98,19 +87,11 @@ namespace auto_aim {
     std::vector<Armor> Detector::entire_armor(const cv::Mat &input_img, std::vector<Armor> &armors) {
         classifier = std::make_unique<NumberClassifier>(model_path_, label_path_, threshold_, ignore_classes_);
         corner_corrector = std::make_unique<LightCornerCorrector>();
-        // std::cout << "armors_size:" << armors.size() << std::endl;
         if (!armors.empty() && classifier != nullptr) {
             std::for_each(
               std::execution::par, armors.begin(), armors.end(), [this, &input_img](Armor &armor) {
-                  // std::cout << "classifier?" << std::endl;
                   armor.number_img = classifier->extract_number(input_img, armor);
                   classifier->classify(input_img, armor);
-                  if (corner_corrector != nullptr) {
-                      // std::cout << "corner_corrector?" << std::endl;
-                      // corner_corrector->correctCorners(armor, gray_img_);
-                  }
-                  // lightbar_points_corrector(armor.left, gray_img_);
-                  // lightbar_points_corrector(armor.right, gray_img_);
 
               });
             classifier->erase_ignore_classes(armors);
@@ -140,7 +121,6 @@ namespace auto_aim {
         auto ratio_ok = lightbar.ratio > min_lightbar_ratio_ && lightbar.ratio < max_lightbar_ratio_;
         auto angle_ok = lightbar.angle_error < max_angle_error_;
         auto length_ok = lightbar.length > min_lightbar_length_;
-        // std::cout << ratio_ok << " " << angle_ok <<  " " << length_ok << std::endl;
         return ratio_ok && angle_ok && length_ok;
     }
 
@@ -157,15 +137,7 @@ namespace auto_aim {
         else if (std::isnan(armor.top_bottom_angle_error)) {
             top_bottom_err_ok = 1;
         }
-        // std::cout <<"NOT" << "armor.ratio " << armor.ratio << " armor.side_ratio " << armor.side_ratio
-        // << " armor.top_bottom_angle_error " << armor.top_bottom_angle_error <<
-        //             " armor.top_angle_error " << armor.top_angle_error << " armor.light_angle_error " <<armor.light_angle_error << std::endl;
-        // std::cout << max_light_angle_ << std::endl;
-        // auto rectangular_error_diff_ok = armor.rectangular_error_diff < max_rectangular_error_diff_;
-        // std::cout << "ratio_ok:" << ratio_ok << side_ratio_ok << rectangular_error_ok << std::endl;
-        // std::cout << "ratio_ok:" << top_bottom_err_ok << light_angle_error_ok << top_angle_ok << std::endl;
         return ratio_ok && side_ratio_ok && rectangular_error_ok;
-        // return  ratio_ok && side_ratio_ok && rectangular_error_ok && top_angle_ok && light_angle_error_ok && top_bottom_err_ok;
     }
 
     ArmorType Detector::get_type(const Armor &armor) {
@@ -186,7 +158,6 @@ namespace auto_aim {
             sum_red += bgr_img.at<cv::Vec3b>(point)[2];
         }
 
-        // if (sum_red < and sum_blue <) return Color::extinguish;
         if (std::abs(sum_red - sum_blue) / static_cast<int>(contour.size()) > color_diff_thresh_) {
             return sum_blue > sum_red ? Color::blue : Color::red;
         }
@@ -195,10 +166,6 @@ namespace auto_aim {
 
     void Detector::show_result(const cv::Mat & binary_img, const cv::Mat & input_img, std::vector<Armor> &armors) {
         draw_armor(input_img, armors);
-        // cv::namedWindow("input_img", cv::WINDOW_NORMAL);
-
-        // 2. 强制把窗口设为 640x480
-        // cv::resizeWindow("input_img", 640, 480);
         cv::imshow("HikCamera", input_img);
         cv::imshow("binary_img", binary_img);
         cv::imshow("gray_img_", gray_img_);

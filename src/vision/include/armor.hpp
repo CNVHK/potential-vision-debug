@@ -47,7 +47,6 @@ namespace auto_aim {
         Color color;
         double angle, angle_error, width, length, ratio;
         Lightbar(const cv::RotatedRect & rotated_rect);
-        // Lightbar() {};
     };
 
     struct Armor {
@@ -78,7 +77,6 @@ namespace auto_aim {
         ArmorType type;
         ArmorPriority priority;
         Armor(const Lightbar &left, const Lightbar &right);
-        // Armor() {};
     };
 }
 #endif //POTENTIAL_VISION_ARMOR_HPP

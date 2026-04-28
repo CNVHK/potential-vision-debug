@@ -11,18 +11,18 @@ namespace tool {
 
     // 四元数转欧拉角
     // x = 0, y = 1, z = 2
-    // e.g. 先绕z轴旋转，再绕y轴旋转，最后绕x轴旋转：axis0=2, axis1=1, axis2=0
+    // 例如先绕 z 轴旋转，再绕 y 轴旋转，最后绕 x 轴旋转：axis0=2, axis1=1, axis2=0
     // 参考：https://github.com/evbernardes/quaternion_to_euler
     Eigen::Vector3d eulers(
       Eigen::Quaterniond q, int axis0, int axis1, int axis2, bool extrinsic = false);
 
     // 旋转矩阵转欧拉角
     // x = 0, y = 1, z = 2
-    // e.g. 先绕z轴旋转，再绕y轴旋转，最后绕x轴旋转：axis0=2, axis1=1, axis2=0
+    // 例如先绕 z 轴旋转，再绕 y 轴旋转，最后绕 x 轴旋转：axis0=2, axis1=1, axis2=0
     Eigen::Vector3d eulers(Eigen::Matrix3d R, int axis0, int axis1, int axis2, bool extrinsic = false);
 
     // 欧拉角转旋转矩阵
-    // zyx:先绕z轴旋转，再绕y轴旋转，最后绕x轴旋转
+    // ZYX 顺序：先绕 z 轴旋转，再绕 y 轴旋转，最后绕 x 轴旋转。
     Eigen::Matrix3d rotation_matrix(const Eigen::Vector3d & ypr);
 
     // 直角坐标系转球坐标系

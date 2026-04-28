@@ -4,13 +4,6 @@
 #include <opencv2/core.hpp>  // CV_PI
 
 namespace tool {
-    // double limit_rad(double angle)
-    // {
-    //   while (angle > CV_PI) angle -= 2 * CV_PI;
-    //   while (angle <= -CV_PI) angle += 2 * CV_PI;
-    //   return angle;
-    // }
-
     double limit_rad(double angle) {
       double res = std::fmod(angle + CV_PI, 2.0 * CV_PI);
       if (res < 0) {

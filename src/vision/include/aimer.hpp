@@ -13,12 +13,13 @@ namespace auto_aim {
         Eigen::Vector4d xyza;
     };
 
+    // 瞄准模块：根据追踪目标、弹速和云台姿态预测击打点，并输出云台 yaw/pitch。
+    //
+    // Aimer 不判断是否真正开火，只负责给出可打的角度和 aim_point_valid。
     class Aimer {
     public:
         AimPoint debug_aim_point;
         explicit Aimer(const std::string & config_path);
-        // Command aim(std::list<Target> targets, std::chrono::steady_clock::time_point timestamp, double bullet_speed,
-        //     bool to_now = true);
         Command aim(std::list<Target> targets, std::chrono::steady_clock::time_point timestamp, double bullet_speed,
             Eigen::Matrix3d R, bool to_now = true);
     private:

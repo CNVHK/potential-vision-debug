@@ -1,13 +1,8 @@
-//
-// Created by yuanshangkun on 2026/1/1.
-//
-
 #ifndef POTENTIAL_VISION_LIGHT_CORNER_CORRECTOR_HPP
 #define POTENTIAL_VISION_LIGHT_CORNER_CORRECTOR_HPP
 
 
 #include <opencv2/opencv.hpp>
-// project
 #include "armor.hpp"
 
 namespace auto_aim {
@@ -15,29 +10,27 @@ namespace auto_aim {
     struct SymmetryAxis {
         cv::Point2f centroid;
         cv::Point2f direction;
-        float mean_val; // Mean brightness
+        float mean_val; // 平均亮度
     };
 
-    // This class is used to improve the precision of the corner points of the light bar.
-    // First, the PCA algorithm is used to find the symmetry axis of the light bar,
-    // and then along the symmetry axis to find the corner points of the light bar based on the gradient of brightness.
+    // 使用 PCA 和亮度梯度修正灯条端点，提高装甲板角点精度。
     class LightCornerCorrector {
     public:
         explicit LightCornerCorrector() noexcept {}
 
-        // Correct the corners of the armor's lights
+        // 修正装甲板两侧灯条的上下端点。
         void correctCorners(Armor &armor, const cv::Mat &gray_img);
 
     private:
-        // Find the symmetry axis of the light
+        // 寻找灯条亮度分布的对称轴。
         SymmetryAxis findSymmetryAxis(const cv::Mat &gray_img, const Lightbar &light);
 
-        // Find the corner of the light
+        // 沿对称轴寻找灯条端点。
         cv::Point2f findCorner(const cv::Mat &gray_img,
                                const Lightbar &light,
                                const SymmetryAxis &axis,
                                std::string order);
     };
 
-}  // namespace fyt::auto_aim
+}  // namespace auto_aim
 #endif //POTENTIAL_VISION_LIGHT_CORNER_CORRECTOR_HPP

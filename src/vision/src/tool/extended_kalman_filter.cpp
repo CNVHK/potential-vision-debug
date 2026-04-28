@@ -47,23 +47,20 @@ namespace tool {
     Eigen::VectorXd x_prior = x;
     Eigen::MatrixXd K = P * H.transpose() * (H * P * H.transpose() + R).inverse();
 
-    // Stable Compution of the Posterior Covariance
+    // Joseph 形式更新协方差，数值稳定性更好。
     // https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-Kalman-Filter-Math.ipynb
     P = (I - K * H) * P * (I - K * H).transpose() + K * R * K.transpose();
 
 
     x = x_add(x, K * z_subtract(z, h(x)));
 
-    /// 卡方检验
+    // 卡方检验用于判断观测是否连续异常。
     Eigen::VectorXd residual = z_subtract(z, h(x));
-    // 新增检验
     Eigen::MatrixXd S = H * P * H.transpose() + R;
     double nis = residual.transpose() * S.inverse() * residual;
     double nees = (x - x_prior).transpose() * P.inverse() * (x - x_prior);
 
-    // 卡方检验阈值（自由度=4，取置信水平95%）
-    // constexpr double nis_threshold = 0.711;
-    // constexpr double nees_threshold = 0.711;
+    // 卡方检验阈值：自由度 4，置信水平 95%。
     constexpr double nis_threshold = 9.488;
     constexpr double nees_threshold = 19.68;
 

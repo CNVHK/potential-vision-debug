@@ -15,18 +15,28 @@
 #include "rm_interfaces/msg/target.hpp"
 #include "vision_types.hpp"
 
+// ROS 输出适配层。
+//
+// Pipeline 输出的是统一的 VisionFrameOutput，这个类负责把它拆成下游控制消息和调试话题。
+// 这样后续更换通信协议、关闭 debug 图像、或增加 rosbag 回放输出时，不需要修改算法编排层。
 class VisionRosPublisher {
 public:
     VisionRosPublisher(rclcpp::Node & node, bool debug);
 
+    // 发布顺序保持旧逻辑：先控制结果，再 debug 绘制/FPS/压缩图像。
     void publish(
         auto_aim::VisionFrameOutput & output, const sensor_msgs::msg::Image::SharedPtr & image_msg,
         cv::Mat & image, const rclcpp::Time & current_ros_time);
 
 private:
+    // 控制与目标状态输出。/vision/auto_aim 是当前下游使用的主输出。
     void publish_result(const auto_aim::VisionFrameOutput & output, const rclcpp::Time & stamp);
+
+    // 调试绘制会直接修改传入图像，然后由 publish_debug_image 发布压缩图。
     void draw_debug(
         cv::Mat & image, auto_aim::VisionFrameOutput & output, const rclcpp::Time & current_ros_time);
+
+    // RViz Marker：展示 EKF 推算出的各装甲板位置。
     void publish_armor_markers(
         auto_aim::Target & target, const auto_aim::Armor & armor, const rclcpp::Time & current_ros_time);
     void publish_fps();

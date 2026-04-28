@@ -19,6 +19,7 @@ namespace auto_aim
         if (!command.control || targets.empty() || !auto_fire_) return false;
         auto target_x = targets.front().ekf_x()[0];
         auto target_y = targets.front().ekf_x()[2];
+        // 远距离允许更大的角度容差，近距离收紧容差减少误击。
         auto tolerance = std::sqrt(tool::square(target_x) + tool::square(target_y)) > judge_distance_
                            ? second_tolerance_
                            : first_tolerance_;
@@ -30,19 +31,13 @@ namespace auto_aim
           return std::abs(diff);
         };
         if (
-          get_deg_diff(last_command_.yaw , command.yaw) < tolerance * 2 &&  //此时认为command突变不应该射击
-          get_deg_diff(gimbal_pos[0] * (180.0 / CV_PI) , last_command_.yaw) < tolerance &&    //应该减去上一次command的yaw值
+          // 当前云台接近上一帧稳定命令，且新命令没有突变时，才建议开火。
+          get_deg_diff(last_command_.yaw , command.yaw) < tolerance * 2 &&  // 命令突变时不射击
+          get_deg_diff(gimbal_pos[0] * (180.0 / CV_PI) , last_command_.yaw) < tolerance &&
           command.aim_point_valid) {
             last_command_ = command;
             return true;
         }
-        // if (
-        //   std::abs(last_command_.yaw - command.yaw) < tolerance * 2 &&  //此时认为command突变不应该射击
-        //   std::abs(gimbal_pos[0] - last_command_.yaw) < tolerance &&    //应该减去上一次command的yaw值
-        //   command.aim_point_valid) {
-        //     last_command_ = command;
-        //     return true;
-        //   }
 
         last_command_ = command;
         return false;

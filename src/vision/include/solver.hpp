@@ -9,6 +9,10 @@
 
 
 namespace auto_aim {
+    // 3D 解算模块：把 Detector 输出的 2D 装甲板角点解算到云台系/世界系。
+    //
+    // solve() 会原地写入 Armor 的 xyz/ypr/ypd 字段。当前仍复用 Armor 作为 2D+3D 载体，
+    // 后续如果拆 DetectedArmor/SolvedArmor，需要优先从这里切开。
     class Solver {
     public:
         explicit Solver(std::string &config_path);
