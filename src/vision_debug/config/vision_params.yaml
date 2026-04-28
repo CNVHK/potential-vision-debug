@@ -1,0 +1,76 @@
+threshold: 0.7
+img_threshold: 30
+max_angle_error: 0.503981634  # 约 45 度
+min_lightbar_ratio: 1.5
+max_lightbar_ratio: 20 #20
+min_lightbar_length: 4 # 8
+min_armor_ratio: 1
+max_armor_ratio: 10 #3.4
+max_side_ratio: 1.6  #1.6
+max_rectangular_error: 25 # 单位：度
+max_rectangular_error_diff: 0.025
+min_confidence: 0.8
+color_diff_thresh: 20
+max_top_angle: 0.16
+max_light_angle: 2
+max_top_bottom_angle: 0.1  #0.09
+min_top_bottom_angle: -1
+model_path: "src/vision_debug/src/number_model/lenet.onnx"
+label_path: "src/vision_debug/src/number_model/label.txt"
+ignore_classes: ["negative"]
+
+
+
+#####################################################################################################
+R_gimbal2imubody_data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+t_camera2gimbal: [0.12, 0.0, 0.045]
+# t_gimbal2gun: [0.100, -0.03, -0.03]
+t_gimbal2gun: [0.100, 0.02, -0.03]
+#camera_matrix_data: [492.93545221480736, 0.0, 293.5403245413664, 0.0, 493.8139016519513, 224.97788040849863, 0.0, 0.0, 1.0]
+#  [1808.0042144701415, 0.0, 720.8415151208276,
+#   0.0, 1811.6399444449542, 574.3439002829814,
+#   0.0, 0.0, 1.0]
+
+#camera_matrix_data: [1824.908034, 0.000000, 704.444069,
+#                     0.000000, 1825.526745, 530.553880,
+#                     0.000000, 0.000000, 1.000000]
+camera_matrix_data: [1798.218234, 0.000000, 716.237183,
+                      0.000000, 1801.743883, 524.274047,
+                      0.000000, 0.000000, 1.000000]
+
+
+
+#distortion_coeffs_data: [0.0661926978637639, -0.0808809749467666, -0.0006302834540438931, -0.0016003337051856011, 0.0]
+#distortion_coeffs_data:   [-0.070356, 0.162113, -0.000310, -0.002493, 0.000000]
+distortion_coeffs_data: [-0.090868, 0.118871, 0.000046, 0.001177, 0.000000]
+
+R_camera2gimbal: [0.0, 0.0, 1.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.0]
+#R_camera2gimbal: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0
+
+
+
+
+#############################################################################################
+enemy_color: "red"
+min_detect_count: 4
+max_temp_lost_count: 10
+outpost_max_temp_lost_count: 60
+
+
+###############################################################################################
+yaw_offset: -3.5 # 单位：度，旧值 -2.5
+pitch_offset: -5.5 # 单位：度，旧值 2
+comming_angle: 35 # 单位：度
+
+leaving_angle: 50 # 单位：度
+min_spin_speed: 2 # 单位：rad/s
+decision_speed: 12 # 单位：rad/s
+high_speed_delay_time: 0.12 # 单位：s，旧值 0.005
+low_speed_delay_time: 0.12 # 单位：s
+
+
+##############################################################################################
+first_tolerance: 2 # 近距离射击容差，单位：度，旧值 4
+second_tolerance: 3 # 远距离射击容差，单位：度，旧值 5
+judge_distance: 2 # 距离判断阈值
+auto_fire: true # 是否由自瞄控制射击

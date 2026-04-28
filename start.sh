@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "potential-vision start"
+echo "potential-vision-debug start"
 echo "ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
 
 # setup env
@@ -22,4 +22,4 @@ colcon build --symlink-install
 source install/setup.bash
 
 # run node
-ros2 launch vision vision.launch.py
+ros2 launch vision_debug vision.launch.py
